@@ -29,7 +29,7 @@ This repository includes:
 
 | Pattern | Category | Version | Last Updated | Description |
 |---------|----------|---------|--------------|-------------|
-| [Ephemeral Agent Credentialing](./patterns/ephemeral-agent-credentialing/) | IAM for AI Systems | v1.1 | 2025-11-26 | Secure authentication and authorization for short-lived AI agents using unique identities and task-scoped credentials |
+| [Ephemeral Agent Credentialing](./patterns/ephemeral-agent-credentialing/) | IAM for AI Systems | v1.2 | 2026-01-15 | Secure authentication and authorization for short-lived AI agents using unique identities, task-scoped credentials, and delegation chain verification |
 
 ### Secure Topologies
 
@@ -110,7 +110,8 @@ AI-Security-Blueprints/
 │       ├── README.md              # Pattern overview
 │       └── versions/
 │           ├── v1.0.md           # Version history
-│           └── v1.1.md           # Latest version
+│           ├── v1.1.md           # Previous version
+│           └── v1.2.md           # Latest version
 ├── .github/
 │   └── ISSUE_TEMPLATE/           # Issue templates
 ├── CONTRIBUTING.md               # Contribution guidelines
@@ -149,9 +150,12 @@ Blueprints in this repository may be at different maturity levels:
 ## Related Resources
 
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+- [OWASP Top 10 for Agentic Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [NIST IR 8596 - Cyber AI Profile](https://www.nist.gov/publications)
 - [Cloud Security Alliance - AI Security](https://cloudsecurityalliance.org/research/topics/ai-security)
 - [SPIFFE/SPIRE Documentation](https://spiffe.io/)
+- [IETF WIMSE Working Group](https://datatracker.ietf.org/wg/wimse/about/)
 
 ---
 
