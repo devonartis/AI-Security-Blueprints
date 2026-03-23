@@ -1,0 +1,48 @@
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    autonumber
+    participant U as User / Principal
+    participant AA as Agent A<br/>(Orchestrator)
+    participant CS as Credential<br/>Service
+    participant AB as Agent B<br/>(Delegatee)
+    participant AC as Agent C<br/>(Sub-Delegatee)
+    participant R as Resource<br/>Server
+
+    rect rgba(79, 70, 229, 0.15)
+        Note over U,AA: Original Authorization
+        U->>AA: Task: analyze all customer data
+        AA->>CS: Request token<br/>scope: read:Customers:*
+        CS-->>AA: JWT (scope: read:Customers:*)
+    end
+
+    rect rgba(15, 118, 110, 0.15)
+        Note over AA,AB: Delegation Hop 1 — Scope Narrows
+        AA->>CS: Delegate to Agent B<br/>scope: read:Customers:sector-5
+        CS->>CS: Verify: sector-5 ⊂ *<br/>(scope attenuates)
+        CS-->>AB: Delegation JWT<br/>scope: read:Customers:sector-5<br/>chain: [Agent A sig]
+    end
+
+    rect rgba(3, 105, 161, 0.15)
+        Note over AB,AC: Delegation Hop 2 — Scope Narrows Again
+        AB->>CS: Delegate to Agent C<br/>scope: read:Customers:12345
+        CS->>CS: Verify: 12345 ⊂ sector-5<br/>(scope attenuates)
+        CS-->>AC: Delegation JWT<br/>scope: read:Customers:12345<br/>chain: [Agent A sig, Agent B sig]
+    end
+
+    rect rgba(180, 83, 9, 0.15)
+        Note over AC,R: Resource Access with Chain Verification
+        AC->>R: Request + delegation JWT
+        R->>R: 1. Verify Agent C token sig
+        R->>R: 2. Verify Agent B link sig
+        R->>R: 3. Verify Agent A link sig
+        R->>R: 4. Confirm scope narrows<br/>at each hop
+        R->>R: 5. Check revocation for<br/>all agents in chain
+        R-->>AC: 200 OK — Access Granted
+    end
+
+    rect rgba(190, 24, 93, 0.15)
+        Note over AB,R: Escalation Attempt — BLOCKED
+        AB->>CS: Delegate to Agent C<br/>scope: write:Customers:*
+        CS->>CS: REJECT: write > read<br/>(scope escalation!)
+        CS--xAB: 403 Forbidden<br/>"Scope escalation detected"
+    end

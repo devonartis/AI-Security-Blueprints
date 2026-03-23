@@ -1,0 +1,48 @@
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    autonumber
+    participant O as Orchestrator
+    participant SC as Agent Sidecar<br/>(Attestor)
+    participant CA as Central Authority<br/>(Credential Issuer)
+    participant A as Agent Process
+    participant R as Resource Server
+
+    rect rgba(79, 70, 229, 0.15)
+        Note over O,SC: Step 1 — Secure Bootstrap
+        O->>O: Generate one-time launch token<br/>(TTL: 30s, single-use)
+        O->>SC: Inject token via secure mechanism<br/>(K8s projected SA / tmpfs / Nitro)
+        Note right of O: NEVER via env vars
+    end
+
+    rect rgba(15, 118, 110, 0.15)
+        Note over SC,CA: Step 2 — Attest & Sign
+        SC->>SC: Generate ephemeral key pair<br/>(private key stays in memory)
+        SC->>CA: Send attestation evidence<br/>+ public key + launch token
+        CA->>CA: Validate attestation<br/>(platform props, token validity)
+        CA->>CA: Invalidate launch token<br/>(single-use enforced)
+        CA->>CA: Sign agent public key<br/>(only CA holds signing keys)
+        CA-->>SC: Return signed SVID +<br/>scoped JWT
+    end
+
+    rect rgba(3, 105, 161, 0.15)
+        Note over SC,A: Step 3 — Credential Delivery
+        SC-->>A: Provide credentials<br/>(SVID + JWT)
+        Note over SC: Private key never<br/>leaves sidecar
+    end
+
+    rect rgba(180, 83, 9, 0.15)
+        Note over A,R: Step 4 — Operate
+        A->>R: Request + JWT + mTLS
+        R->>R: Validate against<br/>CA public key
+        R-->>A: Response
+    end
+
+    rect rgba(190, 24, 93, 0.15)
+        Note over SC,CA: Crash Recovery
+        Note over A: Agent crashes!
+        A->>SC: Restart detected
+        SC->>CA: Re-attest (new instance ID)
+        CA->>CA: Implicitly revoke old creds
+        CA-->>SC: New SVID + JWT<br/>(new instance ID)
+        SC-->>A: Fresh credentials
+    end

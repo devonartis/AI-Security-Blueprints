@@ -1,0 +1,78 @@
+%%{init: {'theme': 'dark'}}%%
+flowchart TD
+    REQ["Agent Request<br/>+ JWT + mTLS Cert"]
+
+    subgraph TRANSPORT["Transport Layer"]
+        T1{"mTLS Certificate<br/>Valid?"}
+    end
+
+    subgraph TOKEN["Token Validation"]
+        T2{"JWT Signature<br/>Valid?"}
+        T3{"Token<br/>Expired?"}
+        T4{"Scope Matches<br/>Request?"}
+    end
+
+    subgraph REVOCATION["Revocation Check"]
+        T5{"Standard or<br/>High-Assurance?"}
+        T5A["Cached Revocation<br/>List Check"]
+        T5B["Online Introspection<br/>(Central Authority)"]
+        T6{"Token<br/>Revoked?"}
+    end
+
+    subgraph DELEGATION["Delegation Verification"]
+        T7{"Delegation<br/>Chain Present?"}
+        T8["Verify Each Link<br/>Signature"]
+        T9{"Scope Attenuates<br/>at Each Hop?"}
+        T10{"Any Agent in<br/>Chain Revoked?"}
+    end
+
+    GRANT["Access Granted"]
+    DENY["Access Denied"]
+    LOG["Log to Audit Trail<br/>(with why-denied)"]
+
+    REQ --> T1
+    T1 -->|Yes| T2
+    T1 -->|No| DENY
+
+    T2 -->|Yes| T3
+    T2 -->|No| DENY
+
+    T3 -->|No, still valid| T4
+    T3 -->|Yes, expired| DENY
+
+    T4 -->|Yes| T5
+    T4 -->|No| DENY
+
+    T5 -->|Standard| T5A
+    T5 -->|High-Assurance| T5B
+    T5A --> T6
+    T5B --> T6
+
+    T6 -->|No| T7
+    T6 -->|Yes| DENY
+
+    T7 -->|Yes| T8
+    T7 -->|No chain| GRANT
+
+    T8 --> T9
+    T9 -->|Yes| T10
+    T9 -->|No, escalation| DENY
+    T10 -->|No| GRANT
+    T10 -->|Yes| DENY
+
+    GRANT --> LOG
+    DENY --> LOG
+
+    classDef startStyle fill:#4f46e5,stroke:#818cf8,color:#f8fafc,stroke-width:2px
+    classDef checkStyle fill:#1e293b,stroke:#94a3b8,color:#f8fafc,stroke-width:1px
+    classDef grantStyle fill:#15803d,stroke:#4ade80,color:#f8fafc,stroke-width:2px
+    classDef denyStyle fill:#b91c1c,stroke:#f87171,color:#f8fafc,stroke-width:2px
+    classDef logStyle fill:#b45309,stroke:#fbbf24,color:#f8fafc,stroke-width:2px
+    classDef pathStyle fill:#0f766e,stroke:#2dd4bf,color:#f8fafc,stroke-width:1px
+
+    class REQ startStyle
+    class T1,T2,T3,T4,T5,T6,T7,T9,T10 checkStyle
+    class T5A,T5B,T8 pathStyle
+    class GRANT grantStyle
+    class DENY denyStyle
+    class LOG logStyle
