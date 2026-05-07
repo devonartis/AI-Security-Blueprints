@@ -5,8 +5,6 @@
 
 A curated collection of **security patterns, architectures, and topologies** for AI and ML systems—practical, implementation-oriented guidance designed to help teams build secure, resilient AI applications.
 
-**[View the Pattern Site →](https://devonartis.github.io/AI-Security-Blueprints/)**
-
 ## About This Repository
 
 As AI systems become increasingly autonomous and widespread, traditional security approaches often fall short. This repository provides practical security blueprints specifically designed for:
@@ -32,6 +30,8 @@ This repository includes:
 | Pattern | Category | Version | Last Updated | Description |
 |---------|----------|---------|--------------|-------------|
 | [Ephemeral Agent Credentialing](./patterns/ephemeral-agent-credentialing/) | IAM for AI Systems | v1.4 | 2026-04-23 | Secure authentication and authorization for short-lived AI agents using unique identities, task-scoped credentials, delegation chain verification, and operational observability. Technical Edition + Executive Edition. |
+
+**[View the Pattern Site →](https://devonartis.github.io/AI-Security-Blueprints/)**
 
 ### Secure Topologies
 
