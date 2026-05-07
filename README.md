@@ -5,6 +5,8 @@
 
 A curated collection of **security patterns, architectures, and topologies** for AI and ML systems—practical, implementation-oriented guidance designed to help teams build secure, resilient AI applications.
 
+**[View the Pattern Site →](https://devonartis.github.io/AI-Security-Blueprints/)**
+
 ## About This Repository
 
 As AI systems become increasingly autonomous and widespread, traditional security approaches often fall short. This repository provides practical security blueprints specifically designed for:
