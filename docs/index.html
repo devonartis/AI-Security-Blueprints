@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ephemeral Agent Credentialing v1.4 — Pattern Specification</title>
+<meta name="description" content="A security architecture pattern that eliminates long-lived agent secrets by binding credentials to individual agent tasks. For CISOs, platform engineers, AI security engineers, and risk analysts. By Devon Artis."/>
+<meta name="author" content="Devon Artis"/>
+<meta property="og:title" content="Ephemeral Agent Credentialing v1.4"/>
+<meta property="og:description" content="Bind credentials to tasks, not identities. Eliminate the credential exposure window in agentic AI deployments."/>
+<meta property="og:type" content="article"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ================================================================
+   TOKENS
+================================================================ */
+:root {
+  --base:       oklch(97% 0.007 75);
+  --base-alt:   oklch(94% 0.009 75);
+  --ink:        oklch(18% 0.008 250);
+  --ink-mid:    oklch(38% 0.008 250);
+  --ink-low:    oklch(56% 0.007 250);
+  --rule:       oklch(88% 0.006 250);
+  --accent:     oklch(50% 0.19 30);
+  --accent-bg:  oklch(96% 0.025 30);
+  --severity:   oklch(40% 0.19 25);
+  --ok:         oklch(45% 0.14 155);
+  --ok-bg:      oklch(95% 0.04 155);
+
+  --font-condensed: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body:      "Barlow", system-ui, -apple-system, sans-serif;
+
+  --max:        72rem;
+  --radius:     3px;
+}
+
+/* ================================================================
+   RESET + BASE
+================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  background: var(--base);
+  color: var(--ink-mid);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+h1, h2, h3, h4 { color: var(--ink); }
+h1, h2 { font-family: var(--font-condensed); letter-spacing: -0.01em; }
+h1 { font-size: clamp(3rem, 8vw, 5.5rem); font-weight: 900; line-height: 0.92; }
+h2 { font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 700; line-height: 1.1; }
+h3 { font-size: 1.2rem; font-weight: 600; line-height: 1.3; }
+h4 { font-size: 1rem; font-weight: 600; }
+p { max-width: 70ch; }
+strong { color: var(--ink); font-weight: 600; }
+hr { border: none; border-top: 1px solid var(--rule); margin: 0; }
+
+/* ================================================================
+   LAYOUT
+================================================================ */
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.5rem; }
+.section { padding: clamp(4rem, 8vw, 7rem) 1.5rem; }
+.section.alt { background: var(--base-alt); }
+.section-inner { max-width: var(--max); margin: 0 auto; }
+
+/* ================================================================
+   SECTION ENTRY (label + hr + headline)
+================================================================ */
+.entry { margin-bottom: 3rem; }
+.entry-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-low);
+  margin-bottom: 0.6rem;
+}
+.entry hr { margin-bottom: 1.5rem; }
+.entry p { color: var(--ink-mid); margin-top: 0.8rem; font-size: 1.05rem; }
+
+/* ================================================================
+   NAVIGATION
+================================================================ */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--base);
+  border-bottom: 1px solid var(--rule);
+}
+.nav-inner {
+  max-width: var(--max); margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.brand {
+  display: flex; align-items: center; gap: 0.6rem;
+  color: var(--ink); font-weight: 600; font-size: 0.9rem;
+  text-decoration: none;
+}
+.brand:hover { text-decoration: none; }
+.brand-mark {
+  font-family: var(--font-condensed);
+  font-weight: 900; font-size: 1rem;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.nav-links {
+  list-style: none;
+  display: flex; align-items: center; gap: 1.6rem;
+}
+.nav-links a {
+  font-size: 0.85rem; font-weight: 500;
+  color: var(--ink-low);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--ink); }
+.nav-links a.active { color: var(--accent); }
+.nav-cta {
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--base);
+  background: var(--accent);
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius);
+  transition: background 0.15s;
+  text-decoration: none;
+}
+.nav-cta:hover { background: var(--severity); text-decoration: none; }
+.nav-toggle {
+  display: none; background: none; border: none;
+  color: var(--ink); cursor: pointer; padding: 0.25rem;
+}
+@media (max-width: 820px) {
+  .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--base); border-bottom: 1px solid var(--rule);
+    flex-direction: column; gap: 0; padding: 0.5rem 1.5rem 1rem; align-items: flex-start; }
+  .nav-links.open { display: flex; }
+  .nav-links li { padding: 0.45rem 0; width: 100%; }
+  .nav-cta { display: none; }
+  .nav-toggle { display: block; }
+}
+
+/* ================================================================
+   PROGRESS BAR
+================================================================ */
+.progress { position: fixed; top: 0; left: 0; height: 2px; background: var(--accent); z-index: 200; width: 0; transition: width 0.1s linear; }
+
+/* ================================================================
+   HERO
+================================================================ */
+.hero {
+  padding: clamp(8rem, 14vw, 11rem) 1.5rem clamp(4rem, 8vw, 7rem);
+}
+.hero-inner { max-width: var(--max); margin: 0 auto; }
+.hero-label {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 1.5rem;
+}
+.hero h1 { margin-bottom: 1.5rem; }
+.hero h1 span { color: var(--accent); }
+.hero .lede {
+  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+  color: var(--ink-mid); max-width: 52rem;
+  margin-bottom: 2.5rem; line-height: 1.55;
+}
+.hero-ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 3rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.8rem 1.5rem; border-radius: var(--radius);
+  font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+  text-decoration: none;
+}
+.btn:hover { transform: translateY(-1px); text-decoration: none; }
+.btn-primary { background: var(--accent); color: var(--base); }
+.btn-primary:hover { background: var(--severity); color: var(--base); }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+.btn-ghost:hover { background: var(--base-alt); color: var(--ink); }
+.hero-meta {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  font-size: 0.88rem; color: var(--ink-low);
+  border-top: 1px solid var(--rule); padding-top: 1.2rem;
+}
+.hero-meta strong { color: var(--ink); }
+
+/* ================================================================
+   AUDIENCE JUMP BAR
+================================================================ */
+.audience-bar {
+  background: var(--base-alt);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.audience-bar-inner {
+  max-width: var(--max); margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+}
+.audience-card {
+  padding: 1rem;
+  background: var(--base);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+.audience-card:hover { border-color: var(--accent); text-decoration: none; }
+.audience-card .role {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--accent); display: block; margin-bottom: 0.3rem;
+}
+.audience-card .need {
+  font-size: 0.88rem; color: var(--ink-mid); line-height: 1.4;
+}
+@media (max-width: 700px) {
+  .audience-bar-inner { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .audience-bar-inner { grid-template-columns: 1fr; }
+}
+
+/* ================================================================
+   NUMBERED ROW LIST (replaces identical card grids)
+================================================================ */
+.num-list { display: flex; flex-direction: column; gap: 0; }
+.num-row {
+  display: grid; grid-template-columns: 3.5rem 1fr;
+  gap: 0 1.5rem; padding: 1.75rem 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: start;
+}
+.num-row:first-child { border-top: 1px solid var(--rule); }
+.num {
+  font-family: var(--font-condensed);
+  font-size: 2.25rem; font-weight: 900;
+  color: var(--accent); line-height: 1;
+  padding-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.num-content h3 { margin-bottom: 0.4rem; }
+.num-content p { color: var(--ink-mid); font-size: 0.95rem; margin: 0; max-width: 60ch; }
+
+/* ================================================================
+   COMPARISON BLOCK (before/after — no side stripes)
+================================================================ */
+.compare-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border: 1px solid var(--rule); border-radius: var(--radius);
+  overflow: hidden;
+}
+@media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr; } }
+.compare-col { padding: 2rem 1.75rem; }
+.compare-col.resolution { background: var(--base-alt); }
+.compare-col .col-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-low); margin-bottom: 1rem; display: block;
+}
+.compare-col.resolution .col-label { color: var(--accent); }
+.compare-col ul { list-style: none; padding: 0; }
+.compare-col ul li {
+  font-size: 0.95rem; color: var(--ink-mid);
+  padding: 0.5rem 0; border-bottom: 1px solid var(--rule); line-height: 1.45;
+}
+.compare-col ul li:last-child { border-bottom: none; }
+
+/* ================================================================
+   STATEMENT BLOCK (replaces hero-metric)
+================================================================ */
+.statement {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin: 2.5rem 0;
+}
+.statement-ratio {
+  font-family: var(--font-condensed);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900; color: var(--ink); line-height: 1.05;
+  margin-bottom: 0.6rem;
+}
+.statement-ratio span { color: var(--accent); }
+.statement p { font-size: 1.05rem; color: var(--ink-mid); max-width: 52rem; }
+
+/* ================================================================
+   DATA TABLE
+================================================================ */
+.table-scroll { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.9rem; min-width: 520px;
+}
+thead th {
+  background: var(--base-alt);
+  color: var(--ink-low); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.68rem;
+  padding: 0.85rem 1rem; text-align: left;
+  border-bottom: 2px solid var(--rule);
+}
+thead th.r { text-align: right; }
+thead th.accent { color: var(--accent); }
+tbody td {
+  padding: 0.85rem 1rem; border-bottom: 1px solid var(--rule);
+  color: var(--ink-mid); vertical-align: top; line-height: 1.45;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) td { background: var(--base-alt); }
+td.id { color: var(--accent); font-weight: 700; font-family: var(--font-condensed); font-size: 1rem; white-space: nowrap; }
+td.score { color: var(--severity); font-weight: 700; text-align: right; white-space: nowrap; }
+td strong { color: var(--ink); }
+
+/* ================================================================
+   TAKEAWAY STRIP
+================================================================ */
+.takeaway {
+  margin: 2rem 0 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--accent-bg);
+  border-radius: var(--radius);
+  font-size: 0.95rem; color: var(--ink-mid);
+}
+.takeaway strong { color: var(--ink); }
+
+/* ================================================================
+   COMPLIANCE TABLE (custom layout)
+================================================================ */
+.compliance { margin-top: 1.5rem; }
+.comp-head {
+  display: grid; grid-template-columns: 100px 160px 1fr;
+  gap: 1rem; font-size: 0.68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-low);
+  padding: 0.6rem 0 0.6rem; border-bottom: 2px solid var(--rule);
+}
+.comp-row {
+  display: grid; grid-template-columns: 100px 160px 1fr;
+  gap: 1rem; padding: 0.9rem 0; border-bottom: 1px solid var(--rule);
+  align-items: start; font-size: 0.9rem;
+}
+.comp-row:last-child { border-bottom: none; }
+.comp-tag { font-weight: 700; color: var(--ink); }
+.comp-req { color: var(--ink-mid); font-family: monospace; font-size: 0.85rem; }
+.comp-body { color: var(--ink-mid); }
+@media (max-width: 700px) {
+  .comp-head { display: none; }
+  .comp-row { grid-template-columns: 1fr; gap: 0.2rem; }
+  .comp-req { font-size: 0.8rem; }
+}
+
+/* ================================================================
+   QUESTIONS GRID
+================================================================ */
+.q-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border-top: 1px solid var(--rule);
+}
+@media (max-width: 640px) { .q-grid { grid-template-columns: 1fr; } }
+.q-item {
+  padding: 1.75rem 0 1.75rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.75rem; align-items: start;
+}
+.q-item:nth-child(even) { border-right: none; }
+@media (max-width: 640px) { .q-item, .q-item:nth-child(even) { border-right: none; } }
+.q-n {
+  font-family: var(--font-condensed); font-weight: 900;
+  font-size: 1.5rem; color: var(--accent); line-height: 1;
+}
+.q-text { font-size: 0.95rem; color: var(--ink-mid); line-height: 1.5; padding-top: 0.15rem; }
+
+/* ================================================================
+   TECHNICAL SECTION — COMPONENT ROWS
+================================================================ */
+.component-list { display: flex; flex-direction: column; gap: 0; }
+.component-row {
+  display: grid; grid-template-columns: 16rem 1fr;
+  gap: 2rem; padding: 2rem 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: start;
+}
+.component-row:first-child { border-top: 1px solid var(--rule); }
+@media (max-width: 680px) { .component-row { grid-template-columns: 1fr; gap: 0.75rem; } }
+.c-meta { }
+.c-num {
+  font-family: var(--font-condensed); font-weight: 900;
+  font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 0.3rem;
+}
+.c-name { font-size: 1.1rem; font-weight: 600; color: var(--ink); line-height: 1.25; }
+.c-body { }
+.c-body p { font-size: 0.95rem; color: var(--ink-mid); margin-bottom: 0.6rem; }
+.c-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+.c-tag {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-low); background: var(--base-alt);
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 0.2rem 0.5rem;
+}
+
+/* ================================================================
+   STANDARDS ALIGNMENT TABLE
+================================================================ */
+.standards { margin-top: 1.5rem; }
+.std-row {
+  display: grid; grid-template-columns: 160px 1fr;
+  gap: 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--rule); align-items: start;
+}
+.std-row:first-child { border-top: 1px solid var(--rule); }
+.std-name { font-weight: 600; color: var(--ink); font-size: 0.9rem; }
+.std-desc { font-size: 0.9rem; color: var(--ink-mid); }
+@media (max-width: 540px) { .std-row { grid-template-columns: 1fr; gap: 0.3rem; } }
+
+/* ================================================================
+   IMPLEMENTATION STATUS
+================================================================ */
+.impl-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+}
+@media (max-width: 640px) { .impl-grid { grid-template-columns: 1fr; } }
+.impl-block {
+  padding: 1.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.impl-block.live { border-color: var(--ok); }
+.impl-label {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-low); margin-bottom: 1rem; display: block;
+}
+.impl-block.live .impl-label { color: var(--ok); }
+.check-list { list-style: none; padding: 0; }
+.check-list li {
+  font-size: 0.9rem; color: var(--ink-mid);
+  padding: 0.4rem 0 0.4rem 1.5rem; position: relative;
+  border-bottom: 1px solid var(--rule);
+}
+.check-list li:last-child { border-bottom: none; }
+.check-list.live li::before { content: "✓"; position: absolute; left: 0; color: var(--ok); font-weight: 700; }
+.check-list.planned li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+
+/* ================================================================
+   DOWNLOADS
+================================================================ */
+.dl-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+  margin-top: 1.5rem;
+}
+@media (max-width: 640px) { .dl-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 400px) { .dl-grid { grid-template-columns: 1fr; } }
+.dl-item {
+  padding: 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  text-decoration: none;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  transition: border-color 0.15s;
+}
+.dl-item:hover { border-color: var(--accent); text-decoration: none; }
+.dl-type {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-low);
+}
+.dl-name { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+.dl-desc { font-size: 0.82rem; color: var(--ink-low); }
+
+/* ================================================================
+   GITHUB LINK BLOCK
+================================================================ */
+.github-block {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  margin-bottom: 2rem;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.github-block:hover { border-color: var(--accent); text-decoration: none; }
+.github-icon { color: var(--ink-low); flex-shrink: 0; }
+.github-block:hover .github-icon { color: var(--accent); }
+.github-text .github-title { font-weight: 600; color: var(--ink); font-size: 0.95rem; }
+.github-text .github-sub { font-size: 0.82rem; color: var(--ink-low); }
+
+/* ================================================================
+   FOOTER
+================================================================ */
+.page-foot {
+  background: var(--ink);
+  color: oklch(70% 0.007 250);
+  padding: 3rem 1.5rem 2rem;
+}
+.foot-inner {
+  max-width: var(--max); margin: 0 auto;
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem;
+}
+@media (max-width: 640px) { .foot-inner { grid-template-columns: 1fr; gap: 1.5rem; } }
+.foot-inner h4 {
+  font-family: var(--font-condensed); font-weight: 700; font-size: 0.85rem;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: oklch(90% 0.006 250); margin-bottom: 0.75rem;
+}
+.foot-inner p, .foot-inner li { font-size: 0.88rem; line-height: 1.55; }
+.foot-inner ul { list-style: none; }
+.foot-inner ul li { margin-bottom: 0.3rem; }
+.foot-inner a { color: oklch(65% 0.007 250); }
+.foot-inner a:hover { color: var(--accent); text-decoration: none; }
+.foot-bottom {
+  max-width: var(--max); margin: 2rem auto 0;
+  padding-top: 1.5rem; border-top: 1px solid oklch(30% 0.006 250);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+  font-size: 0.8rem; color: oklch(50% 0.005 250);
+}
+
+/* ================================================================
+   FADE IN ON SCROLL
+================================================================ */
+.fade { opacity: 0; transform: translateY(16px); transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1); }
+.fade.in { opacity: 1; transform: none; }
+.fade.d1 { transition-delay: 0.07s; }
+.fade.d2 { transition-delay: 0.14s; }
+.fade.d3 { transition-delay: 0.21s; }
+
+/* ================================================================
+   SECTION DIVIDER LABEL (audience band)
+================================================================ */
+.band {
+  padding: 0.75rem 1.5rem;
+  background: var(--ink);
+  text-align: center;
+}
+.band span {
+  font-family: var(--font-condensed); font-weight: 700;
+  font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase;
+  color: oklch(70% 0.007 250);
+}
+.band strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark">EAC</span>
+      <span>Ephemeral Agent Credentialing</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a class="nav-link" href="#problem">Problem</a></li>
+      <li><a class="nav-link" href="#principles">Principles</a></li>
+      <li><a class="nav-link" href="#risks">Risks</a></li>
+      <li><a class="nav-link" href="#technical">Technical</a></li>
+      <li><a class="nav-link" href="#downloads">Downloads</a></li>
+      <li><a class="nav-cta" href="https://github.com/devonartis/AI-Security-Blueprints" target="_blank" rel="noopener">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <span class="hero-label fade">
+      Security Pattern &nbsp;·&nbsp; v1.4 &nbsp;·&nbsp; Production-Ready
+    </span>
+    <h1 class="fade d1">Ephemeral Agent<br><span>Credentialing</span></h1>
+    <p class="lede fade d2">AI agents live for minutes. Their credentials live for fifteen. That gap is the attack surface. This pattern eliminates it by binding credentials to tasks, not identities, so authority expires when the work ends.</p>
+    <div class="hero-ctas fade d3">
+      <a class="btn btn-primary" href="#problem">Executive Brief</a>
+      <a class="btn btn-ghost" href="#technical">Technical Spec</a>
+      <a class="btn btn-ghost" href="https://github.com/devonartis/AI-Security-Blueprints" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <div class="hero-meta fade d3">
+      <span><strong>Devon Artis</strong> &nbsp;·&nbsp; April 2026</span>
+      <span>CC BY-SA 4.0</span>
+      <span>NIST IR 8596 &nbsp;·&nbsp; OWASP Agentic Top 10 &nbsp;·&nbsp; IETF WIMSE</span>
+    </div>
+  </div>
+</section>
+
+<!-- AUDIENCE BAR -->
+<div class="audience-bar">
+  <div class="audience-bar-inner">
+    <a class="audience-card" href="#problem">
+      <span class="role">CISO / Board</span>
+      <span class="need">Should I mandate this? What is my exposure?</span>
+    </a>
+    <a class="audience-card" href="#technical">
+      <span class="role">Platform Engineer</span>
+      <span class="need">How does this work? What changes in my stack?</span>
+    </a>
+    <a class="audience-card" href="#risks">
+      <span class="role">AI Security Engineer</span>
+      <span class="need">Does this cover my threat surface?</span>
+    </a>
+    <a class="audience-card" href="#compliance">
+      <span class="role">Risk Analyst</span>
+      <span class="need">What is my regulatory exposure without this?</span>
+    </a>
+  </div>
+</div>
+
+<!-- ============================================================
+     EXECUTIVE SECTION
+     Audience: CISO, Risk Analyst
+============================================================ -->
+<div class="band"><span>Executive Brief &nbsp;&mdash;&nbsp; <strong>CISO &amp; Risk</strong></span></div>
+
+<!-- PROBLEM -->
+<section class="section" id="problem">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">The problem</span>
+      <hr>
+      <h2>Every trigger is a new agent. One credential authenticates all of them.</h2>
+      <p>Leadership pictures a single running agent with a stable identity. What is actually deployed is a stream of short-lived instances: one per user click, webhook, or scheduled trigger. Thousands per day. The LLM replans each run from scratch. The agent ends when the task ends. The credential does not.</p>
+    </div>
+
+    <div class="compare-grid fade d1">
+      <div class="compare-col">
+        <span class="col-label">What leadership pictures</span>
+        <ul>
+          <li>One running agent with a predictable identity</li>
+          <li>Static permissioning that maps to a named service account</li>
+          <li>The access path is knowable before the agent runs</li>
+          <li>Credential management is a solved problem</li>
+        </ul>
+      </div>
+      <div class="compare-col resolution">
+        <span class="col-label">What is actually deployed</span>
+        <ul>
+          <li>A new agent instance per trigger, thousands per day</li>
+          <li>The LLM replans each run: new tools, new data reach, new scope</li>
+          <li>One credential authenticates every invocation across the day</li>
+          <li><strong>One compromise reaches everything that credential can reach, across every run.</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="statement fade d2">
+      <div class="statement-ratio">A 2-minute task. A <span>15-minute</span> credential.</div>
+      <p>Standard OAuth tokens outlive the agent by 7x per task. With 1,000 invocations per day and 100 concurrent agents, that is roughly 21,000 agent-hours of credential lifetime after the agents have already finished their work. This is the exposure window. The pattern closes it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRINCIPLES -->
+<section class="section alt" id="principles">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">The framework</span>
+      <hr>
+      <h2>Five principles every executive should recognize.</h2>
+      <p>The executive view of the eight technical components in v1.4. The rest of this page is the evidence behind each one.</p>
+    </div>
+
+    <div class="num-list fade d1">
+      <div class="num-row">
+        <div class="num">01</div>
+        <div class="num-content">
+          <h3>Identity, once per instance</h3>
+          <p>Every agent instance receives its own cryptographic identity at spawn time. That identity is retired when the task ends. No two agent runs share an identity, even if they run the same workflow.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num">02</div>
+        <div class="num-content">
+          <h3>Credentials scoped to the task</h3>
+          <p>Tokens are sized to the work and expire with it. A task that needs one customer record gets credentials for one customer record. Renewal cannot expand scope: authority can only attenuate, never grow.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num">03</div>
+        <div class="num-content">
+          <h3>Every request re-validated</h3>
+          <p>Identity, scope, expiry, revocation status, and delegation chain are checked on every call. Zero-trust applied at the agent instance layer, not just at the network perimeter.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num">04</div>
+        <div class="num-content">
+          <h3>Every action attributable, permanently</h3>
+          <p>A tamper-evident, append-only audit log records every credential operation with its delegation lineage. Forensic questions become log queries. Attribution is per-instance, not per-service-account.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num">05</div>
+        <div class="num-content">
+          <h3>Governance at the boundary, credentialing at the instance</h3>
+          <p>Existing IAM (IdP, directory, OAuth, policy engines) governs who can run orchestrators and what policies apply. This pattern governs what identity an agent instance carries during a single task. Both layers are required. Neither replaces the other.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOP RISKS -->
+<section class="section" id="risks">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">The five risks that matter most right now</span>
+      <hr>
+      <h2>Five risks an executive should recognize by name.</h2>
+      <p>17 of 40 threats in the model score critical (10-12). These five are most likely to appear in a breach disclosure, audit finding, or board conversation in 2026.</p>
+    </div>
+
+    <div class="num-list fade d1">
+      <div class="num-row">
+        <div class="num" style="color:var(--severity);font-size:1rem;padding-top:0.3rem;">TM-28</div>
+        <div class="num-content">
+          <h3>Prompt injection leading to credential theft</h3>
+          <p>A crafted input steers the agent to serialize its runtime state. If that state contains long-lived API keys or environment variables, the attacker retains them after the session ends. This is CVE-2025-68664 (LangGrinch, CVSS 9.3) as it actually played out. Ephemeral credentialing means the serialized state contains only a token expiring in under 5 minutes.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num" style="color:var(--severity);font-size:1rem;padding-top:0.3rem;">TM-02</div>
+        <div class="num-content">
+          <h3>One credential across thousands of invocations</h3>
+          <p>The same service account authenticates every agent the workflow spawns. Compromise of one invocation reaches everything that identity can reach across every run that day. Per-instance identity bounds the blast radius to one task.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num" style="color:var(--severity);font-size:1rem;padding-top:0.3rem;">TM-23</div>
+        <div class="num-content">
+          <h3>Long-lived tokens as a GDPR data minimization finding</h3>
+          <p>A 15-minute token on a 2-minute task is not purpose-limited access under Article 5(1)(c). Auditors read it as a direct finding. Task-scoped credentials produce purpose-limitation evidence by construction.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num" style="color:var(--severity);font-size:1rem;padding-top:0.3rem;">TM-40</div>
+        <div class="num-content">
+          <h3>Non-attribution causing regulatory reporting failure</h3>
+          <p>Breach notification under GDPR, HIPAA, and SEC rules requires per-record attribution. Shared credentials cannot produce it. Per-instance audit with hash-chained records turns the question into a log query.</p>
+        </div>
+      </div>
+      <div class="num-row">
+        <div class="num" style="color:var(--severity);font-size:1rem;padding-top:0.3rem;">TM-20</div>
+        <div class="num-content">
+          <h3>Supply chain compromise extending to agent credentials</h3>
+          <p>A compromised dependency or MCP server harvests whatever credentials the agent holds at the moment of compromise. Scope follows the agent. Ephemeral tokens mean the attacker's window is bounded to one task's lifetime.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="takeaway fade d2">
+      The full 17-critical-risk set, scored across probability, business impact, and regulatory exposure, is in <a href="#appendix">Appendix A</a> below.
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE -->
+<section class="section alt" id="compliance">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Compliance alignment</span>
+      <hr>
+      <h2>Where this lands on the regulatory surface.</h2>
+      <p>Structural alignment, not a compliance product. The pattern fixes credential mechanics. The compliance benefits follow from the structure.</p>
+    </div>
+
+    <div class="compliance fade d1">
+      <div class="comp-head">
+        <div>Framework</div>
+        <div>Requirement</div>
+        <div>How v1.4 addresses it</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-tag">GDPR</div>
+        <div class="comp-req">Article 5(1)(c)</div>
+        <div class="comp-body">Task-scoped credentials produce purpose-limitation evidence by default. The token's scope is the evidence.</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-tag">HIPAA</div>
+        <div class="comp-req">&sect;164.312(a)(2)(i)</div>
+        <div class="comp-body">Per-instance identity exceeds the unique-identifier requirement for PHI access. Each agent run is attributable.</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-tag">PCI-DSS 4.0</div>
+        <div class="comp-req">Req 8.6</div>
+        <div class="comp-body">Per-instance identifiers and ephemeral tokens meet and exceed the non-human identity controls in Req 8.6.1 and 8.3.9.</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-tag">SOC 2</div>
+        <div class="comp-req">CC6 / CC7</div>
+        <div class="comp-body">Hash-chained per-instance audit gives auditors the evidence trail requested under logical access and monitoring controls.</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-tag">Breach notification</div>
+        <div class="comp-req">Multiple frameworks</div>
+        <div class="comp-body">Per-record attribution becomes a log query, not an investigation. Required under GDPR, HIPAA, and SEC incident reporting rules.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REDUCTION TABLE -->
+<section class="section" id="reduction">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">What changes</span>
+      <hr>
+      <h2>Legacy today. Pattern tomorrow.</h2>
+    </div>
+
+    <div class="table-scroll fade d1">
+      <table>
+        <thead>
+          <tr>
+            <th>What goes wrong today</th>
+            <th class="accent">What changes under v1.4</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>One credential behind thousands of invocations per day</td><td>Per-instance cryptographic identity issued at spawn; compromise bounded to one task</td></tr>
+          <tr><td>15-minute OAuth tokens on 2-minute tasks</td><td>Task-scoped, minute-scale tokens that end when work ends</td></tr>
+          <tr><td>Credentials in environment variables</td><td>No static secrets; injection returns only a short-lived, scoped token</td></tr>
+          <tr><td>Logs that cannot answer "which agent did this"</td><td>Per-instance, hash-chained audit trail with full delegation lineage</td></tr>
+          <tr><td>Broad credentials provisioned "just in case"</td><td>Scope set at issuance; can only attenuate through delegation, never expand</td></tr>
+          <tr><td>Orphaned credentials that outlive the agent</td><td>No long-lived credentials; heartbeat-driven revocation, no orphans</td></tr>
+          <tr><td>Multi-tenant AI platforms with credential bleed</td><td>Per-tenant trust domains; cross-tenant tokens cannot validate</td></tr>
+          <tr><td>Regulatory reporting built on inference</td><td>Per-agent audit produces the evidence every major framework requires</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- QUESTIONS -->
+<section class="section alt" id="questions">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">What to ask your teams this quarter</span>
+      <hr>
+      <h2>Six questions that clarify posture in one conversation.</h2>
+      <p>An executive who leaves this page with these six questions can have a real conversation with engineering and security leadership next Monday.</p>
+    </div>
+
+    <div class="q-grid fade d1">
+      <div class="q-item">
+        <div class="q-n">01</div>
+        <div class="q-text">How many agent invocations do we run per day, and how many distinct identities do they authenticate under?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-n">02</div>
+        <div class="q-text">What is the ratio of median credential lifetime to median task duration? How long does the credential stay valid after the agent ends?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-n">03</div>
+        <div class="q-text">If one agent instance is compromised right now, how many invocations and systems does that credential reach?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-n">04</div>
+        <div class="q-text">Can we produce per-instance attribution for any action in the last 30 days, within 15 minutes?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-n">05</div>
+        <div class="q-text">Are any agents accessing regulated data under shared accounts or long-lived credentials?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-n">06</div>
+        <div class="q-text">Of the agents planned for the next two quarters, how many will launch under per-instance identity and task-scoped credentials from day one?</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TECHNICAL SECTION
+     Audience: Platform Engineer, AI Security Engineer
+============================================================ -->
+<div class="band"><span>Technical Specification &nbsp;&mdash;&nbsp; <strong>Platform &amp; Security Engineers</strong></span></div>
+
+<section class="section" id="technical">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Eight-component architecture</span>
+      <hr>
+      <h2>The pattern is eight coordinated components, each addressing a distinct failure mode.</h2>
+      <p>Each component can be adopted independently. Security benefits accrue at every intermediate step. A six-phase adoption path is documented in the full technical specification.</p>
+    </div>
+
+    <div class="component-list fade d1">
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 01</div>
+          <div class="c-name">Ephemeral Identity Issuance</div>
+        </div>
+        <div class="c-body">
+          <p>At spawn time, each agent instance receives a unique, cryptographically-verifiable identity bound to its runtime environment. Identity format: <code>spiffe://trust-domain/agent/{orch_id}/{task_id}/{instance_id}</code>. Cannot be forged, reused, or transferred between agents.</p>
+          <p>Addresses the bootstrap problem (secret zero) via platform attestation (SPIFFE/SPIRE), domain-based trust (MCP CIMD), cloud-native IAM, or one-time launch tokens. No pre-shared secret required in the SPIFFE path.</p>
+          <div class="c-tags">
+            <span class="c-tag">SPIFFE/SPIRE</span>
+            <span class="c-tag">MCP CIMD</span>
+            <span class="c-tag">Ed25519</span>
+            <span class="c-tag">Platform attestation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 02</div>
+          <div class="c-name">Short-Lived Task-Scoped Tokens</div>
+        </div>
+        <div class="c-body">
+          <p>Tokens are sized to the work and expire with the task. Default TTL: 5-10 minutes. Renewal cannot expand scope: each renewal is a logged audit event with a maximum renewal limit and a hard ceiling. Semantic scopes (ABAC) express access in terms of the task, not the resource path.</p>
+          <p>Token bloat threshold: 4KB. Above threshold, switch to by-reference tokens with broker-side introspection. Long-running agents use session resumption and crash recovery without reissuing full credentials.</p>
+          <div class="c-tags">
+            <span class="c-tag">EdDSA JWT</span>
+            <span class="c-tag">Semantic scopes</span>
+            <span class="c-tag">Token renewal</span>
+            <span class="c-tag">By-reference tokens</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 03</div>
+          <div class="c-name">Zero-Trust Enforcement</div>
+        </div>
+        <div class="c-body">
+          <p>Every request validates: identity, scope, expiry, revocation status, and delegation chain. mTLS binds tokens to the client certificate so stolen tokens cannot be replayed without the corresponding private key. Clock skew tolerance: 30-second window to accommodate distributed system drift.</p>
+          <div class="c-tags">
+            <span class="c-tag">mTLS</span>
+            <span class="c-tag">JWT introspection</span>
+            <span class="c-tag">SPIFFE SVID</span>
+            <span class="c-tag">Clock skew tolerance</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 04</div>
+          <div class="c-name">Automatic Expiration and Revocation</div>
+        </div>
+        <div class="c-body">
+          <p>Four-level revocation hierarchy: individual token, agent instance, task, and delegation chain. Short TTLs make revocation a last resort rather than a primary control. High-assurance introspection for critical operations (financial transactions, PHI access) triggers additional validation regardless of cached state.</p>
+          <div class="c-tags">
+            <span class="c-tag">Four-level revocation</span>
+            <span class="c-tag">TTL enforcement</span>
+            <span class="c-tag">High-assurance introspection</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 05</div>
+          <div class="c-name">Immutable Audit Logging</div>
+        </div>
+        <div class="c-body">
+          <p>Every credential operation is recorded in a hash-chained append-only log. Each entry includes the delegation lineage, task context, and a cryptographic link to the previous entry. Tampering is detectable. PII and prompt content are sanitized before logging (data minimization by design). RFC 7807-compliant error responses expose the denied scope without leaking token contents.</p>
+          <div class="c-tags">
+            <span class="c-tag">Hash-chained log</span>
+            <span class="c-tag">RFC 7807</span>
+            <span class="c-tag">PII sanitization</span>
+            <span class="c-tag">Delegation lineage</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 06</div>
+          <div class="c-name">Agent-to-Agent Mutual Authentication</div>
+        </div>
+        <div class="c-body">
+          <p>Sub-agents authenticate to parent agents and vice versa using the same ephemeral identity infrastructure. Secure discovery binding prevents MITM attacks during agent-to-agent trust establishment. Heartbeat and liveness monitoring revoke credentials for silent agents automatically: no zombie credentials from crashed instances.</p>
+          <div class="c-tags">
+            <span class="c-tag">Mutual TLS</span>
+            <span class="c-tag">Heartbeat monitoring</span>
+            <span class="c-tag">Secure discovery</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 07</div>
+          <div class="c-name">Delegation Chain Verification</div>
+        </div>
+        <div class="c-body">
+          <p>When a parent agent spawns a sub-agent, it issues a delegation token with attenuated scope: the sub-agent cannot hold more authority than the parent. The full delegation chain is cryptographically verifiable end-to-end, from the original human principal through every intermediate agent. Scope can only attenuate, never escalate.</p>
+          <div class="c-tags">
+            <span class="c-tag">Scope attenuation</span>
+            <span class="c-tag">Chain verification</span>
+            <span class="c-tag">Human principal tracing</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component-row">
+        <div class="c-meta">
+          <div class="c-num">Component 08</div>
+          <div class="c-name">Operational Observability</div>
+        </div>
+        <div class="c-body">
+          <p>Standardized KPI metrics: token issuance latency (p50/p95/p99), revocation propagation time, scope rejection rate, delegation depth distribution. RFC 7807 error contracts expose why a request was denied (expired, revoked, scope mismatch) without revealing token internals. Why-denied tracing links rejections back to the originating delegation decision.</p>
+          <div class="c-tags">
+            <span class="c-tag">RFC 7807 errors</span>
+            <span class="c-tag">KPI metrics</span>
+            <span class="c-tag">Why-denied tracing</span>
+            <span class="c-tag">Prometheus-compatible</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STANDARDS ALIGNMENT -->
+<section class="section alt" id="standards">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Standards alignment</span>
+      <hr>
+      <h2>This pattern maps directly to three active standards efforts.</h2>
+    </div>
+
+    <div class="standards fade d1">
+      <div class="std-row">
+        <div class="std-name">NIST IR 8596</div>
+        <div class="std-desc">Identity and access management for AI systems. Components 1-7 directly address the NHI identity lifecycle requirements. Component 8 addresses the observability requirements added in the 2026 draft.</div>
+      </div>
+      <div class="std-row">
+        <div class="std-name">OWASP Agentic Top 10 (2026)</div>
+        <div class="std-desc">A01 (Prompt Injection), A02 (Insecure Output Handling), A05 (Excessive Agency), A08 (Weak Agent Identity), A09 (Insecure Agent Communication), A10 (Inadequate Audit Logging) are all directly addressed by components in this pattern.</div>
+      </div>
+      <div class="std-row">
+        <div class="std-name">OWASP NHI Top 10 (2025)</div>
+        <div class="std-desc">NHI1 (Improper Offboarding), NHI2 (Secret Leakage), NHI4 (Insecure Authentication), NHI6 (Overprivileged NHI), NHI8 (Environment Injection), NHI10 (Non-Federated Identity). All addressed structurally.</div>
+      </div>
+      <div class="std-row">
+        <div class="std-name">IETF WIMSE</div>
+        <div class="std-desc">Workload Identity in Multi-System Environments. Component 1 (SPIFFE/SVID issuance), Component 3 (mTLS binding), and Component 7 (delegation chain) implement the WIMSE architecture directly.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     APPENDIX
+============================================================ -->
+<div class="band"><span>Appendix &nbsp;&mdash;&nbsp; <strong>All Audiences</strong></span></div>
+
+<!-- 17 CRITICAL RISKS -->
+<section class="section" id="appendix">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Appendix A &mdash; Full critical risk set</span>
+      <hr>
+      <h2>All 17 critical risks in the threat model.</h2>
+      <p>Probability (1-4) + Business Impact (1-4) + Regulatory Exposure (1-4). Score 10-12 = critical.</p>
+    </div>
+
+    <div class="table-scroll fade d1">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Risk</th>
+            <th class="r">Score</th>
+            <th>How v1.4 addresses it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="id">TM-01</td><td><strong>Static credential exfiltration via env vars</strong></td><td class="score">11</td><td>No static secrets; only short-lived, task-scoped tokens issued at runtime.</td></tr>
+          <tr><td class="id">TM-02</td><td><strong>One credential across thousands of invocations</strong></td><td class="score">11</td><td>Per-instance cryptographic identity; compromise bounded to one task.</td></tr>
+          <tr><td class="id">TM-04</td><td><strong>Bearer token replay</strong></td><td class="score">10</td><td>Tokens bound to the client certificate via mTLS; stolen tokens cannot be replayed.</td></tr>
+          <tr><td class="id">TM-05</td><td><strong>Lateral movement via over-privileged credentials</strong></td><td class="score">11</td><td>Task-scoped tokens cannot address resources outside the current scope.</td></tr>
+          <tr><td class="id">TM-09</td><td><strong>Orphaned and zombie credential exploitation</strong></td><td class="score">10</td><td>No long-lived credentials; heartbeat monitoring revokes silent agents.</td></tr>
+          <tr><td class="id">TM-17</td><td><strong>Credential store compromise</strong></td><td class="score">10</td><td>Nothing valuable stored long-term; full store breach yields only minute-expiring tokens.</td></tr>
+          <tr><td class="id">TM-20</td><td><strong>Agentic supply chain credential compromise</strong></td><td class="score">11</td><td>Agent holds only an ephemeral token; compromise shrinks to single-task, minute-scale access.</td></tr>
+          <tr><td class="id">TM-21</td><td><strong>Credential stuffing at machine speed</strong></td><td class="score">10</td><td>Username/password structurally absent; identity via cryptographic attestation only.</td></tr>
+          <tr><td class="id">TM-23</td><td><strong>GDPR data minimization violation</strong></td><td class="score">10</td><td>Task-scoped credentials provide direct, auditable purpose-limited-access evidence.</td></tr>
+          <tr><td class="id">TM-24</td><td><strong>HIPAA unique-identifier violation</strong></td><td class="score">10</td><td>Per-instance identities exceed the unique-identifier requirement by design.</td></tr>
+          <tr><td class="id">TM-28</td><td><strong>Prompt injection credential exfiltration</strong></td><td class="score">11</td><td>No static credentials to exfiltrate; injections return only a short-lived scoped token.</td></tr>
+          <tr><td class="id">TM-30</td><td><strong>Kubernetes service account token over-sharing</strong></td><td class="score">10</td><td>Projected service accounts, per-instance audience claims, short TTLs enforced.</td></tr>
+          <tr><td class="id">TM-32</td><td><strong>PCI-DSS 4.0 non-compliance in CHD environments</strong></td><td class="score">10</td><td>Per-instance IDs satisfy Req 8.6.1; ephemeral tokens exceed Req 8.3.9.</td></tr>
+          <tr><td class="id">TM-34</td><td><strong>AI-assisted recon of non-human identity surface</strong></td><td class="score">11</td><td>No static secrets means automated recon surfaces nothing of persistent value.</td></tr>
+          <tr><td class="id">TM-36</td><td><strong>Cross-tenant credential leakage in multi-tenant AI</strong></td><td class="score">10</td><td>Separate trust domains per tenant provide cryptographic isolation.</td></tr>
+          <tr><td class="id">TM-39</td><td><strong>Third-party MCP server credential interception</strong></td><td class="score">10</td><td>Audience claims bind tokens to a specific MCP server; cross-server reuse fails validation.</td></tr>
+          <tr><td class="id">TM-40</td><td><strong>Regulatory reporting failure from non-attribution</strong></td><td class="score">10</td><td>Hash-chained, per-instance audit produces the forensic trail notification frameworks require.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- IMPLEMENTATION STATUS -->
+<section class="section alt" id="implementation">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Implementation status &mdash; AgentWrit reference implementation</span>
+      <hr>
+      <h2>What actually runs today.</h2>
+      <p>AgentWrit is the Go reference implementation. A single-binary broker. The distinction between what ships and what is planned is part of the specification.</p>
+    </div>
+
+    <div class="impl-grid fade d1">
+      <div class="impl-block live">
+        <span class="impl-label">Working in AgentWrit today</span>
+        <ul class="check-list live">
+          <li>Challenge-response registration (Ed25519)</li>
+          <li>Scoped JWT issuance and renewal</li>
+          <li>Delegation-chain records with scope attenuation</li>
+          <li>Four-level revocation (token / agent / task / chain)</li>
+          <li>Hash-chained tamper-evident audit</li>
+          <li>Transport mTLS support</li>
+          <li>RFC 7807 error contracts with why-denied tracing</li>
+        </ul>
+      </div>
+      <div class="impl-block">
+        <span class="impl-label">On the roadmap</span>
+        <ul class="check-list planned">
+          <li>Fully wired mutual-auth between agents</li>
+          <li>Federation and trust-domain bridging</li>
+          <li>Expanded attestation proofs (model, runtime, code hash)</li>
+          <li>High-assurance introspection for critical operations</li>
+          <li>Broker-optional / brokerless deployments</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOADS -->
+<section class="section" id="downloads">
+  <div class="section-inner">
+    <div class="entry fade">
+      <span class="entry-label">Downloads and source</span>
+      <hr>
+      <h2>Take the framework with you.</h2>
+    </div>
+
+    <a class="github-block fade d1" href="https://github.com/devonartis/AI-Security-Blueprints" target="_blank" rel="noopener">
+      <svg class="github-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      <div class="github-text">
+        <div class="github-title">devonartis/AI-Security-Blueprints</div>
+        <div class="github-sub">Pattern source, versions, diagrams, threat models, and reference implementation. CC BY-SA 4.0.</div>
+      </div>
+    </a>
+
+    <div class="dl-grid fade d2">
+      <a class="dl-item" href="https://github.com/devonartis/AI-Security-Blueprints/blob/main/patterns/ephemeral-agent-credentialing/versions/v1.4-technical.md" target="_blank" rel="noopener">
+        <span class="dl-type">Technical Spec</span>
+        <span class="dl-name">v1.4 Technical Edition</span>
+        <span class="dl-desc">Full implementation spec for security architects and platform engineers.</span>
+      </a>
+      <a class="dl-item" href="https://github.com/devonartis/AI-Security-Blueprints/blob/main/patterns/ephemeral-agent-credentialing/versions/v1.4.md" target="_blank" rel="noopener">
+        <span class="dl-type">Executive Brief</span>
+        <span class="dl-name">v1.4 Executive Edition</span>
+        <span class="dl-desc">Decision-maker brief for CISOs, boards, and risk committees.</span>
+      </a>
+      <a class="dl-item" href="https://github.com/devonartis/AI-Security-Blueprints/blob/main/patterns/ephemeral-agent-credentialing/versions/v1.3.md" target="_blank" rel="noopener">
+        <span class="dl-type">Previous Version</span>
+        <span class="dl-name">v1.3 Technical Framework</span>
+        <span class="dl-desc">Eight-component engineering reference. Production-ready. Superseded by v1.4.</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="page-foot">
+  <div class="foot-inner">
+    <div>
+      <h4>Ephemeral Agent Credentialing</h4>
+      <p>An open security architecture pattern for identity and access management in agentic AI deployments. Version 1.4. Released under CC BY-SA 4.0.</p>
+      <p style="margin-top:0.75rem;">Feedback, community review, and adoption reports welcome via the GitHub repository.</p>
+    </div>
+    <div>
+      <h4>Executive</h4>
+      <ul>
+        <li><a href="#problem">The problem</a></li>
+        <li><a href="#principles">Five principles</a></li>
+        <li><a href="#risks">Top five risks</a></li>
+        <li><a href="#compliance">Compliance alignment</a></li>
+        <li><a href="#questions">Questions to ask</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Technical</h4>
+      <ul>
+        <li><a href="#technical">Eight components</a></li>
+        <li><a href="#standards">Standards alignment</a></li>
+        <li><a href="#appendix">All 17 critical risks</a></li>
+        <li><a href="#implementation">Implementation status</a></li>
+        <li><a href="#downloads">Downloads</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>&copy; 2026 Devon Artis &nbsp;&middot;&nbsp; CC BY-SA 4.0</div>
+    <div>Ephemeral Agent Credentialing v1.4</div>
+  </div>
+</footer>
+
+<script>
+(function() {
+  // Progress bar
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var h = document.documentElement;
+    var s = h.scrollTop || document.body.scrollTop;
+    var t = (h.scrollHeight - h.clientHeight) || 1;
+    bar.style.width = Math.min(100, Math.max(0, s / t * 100)) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+
+  // Active nav
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var sections = links.map(function(a) {
+    return document.getElementById(a.getAttribute('href').slice(1));
+  }).filter(Boolean);
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          var id = e.target.id;
+          links.forEach(function(a) {
+            a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+          });
+        }
+      });
+    }, { rootMargin: '-40% 0px -40% 0px', threshold: 0 });
+    sections.forEach(function(s) { if (s) io.observe(s); });
+  }
+
+  // Fade in
+  var fades = document.querySelectorAll('.fade');
+  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var fio = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('in'); fio.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    fades.forEach(function(el) { fio.observe(el); });
+  } else {
+    fades.forEach(function(el) { el.classList.add('in'); });
+  }
+
+  // Mobile nav
+  var btn = document.getElementById('navToggle');
+  var nav = document.getElementById('navLinks');
+  if (btn && nav) {
+    btn.addEventListener('click', function() { nav.classList.toggle('open'); });
+    nav.addEventListener('click', function(e) { if (e.target.tagName === 'A') nav.classList.remove('open'); });
+  }
+})();
+</script>
+</body>
+</html>
