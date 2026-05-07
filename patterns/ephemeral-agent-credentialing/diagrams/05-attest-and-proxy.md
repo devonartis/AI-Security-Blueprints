@@ -14,4 +14,4 @@ The v1.3 issuance model separates attestation from credential signing to prevent
 4. **Operate** — Agent uses credentials for authenticated resource access.
 5. **Crash Recovery** — On restart, full re-attestation with a new instance ID. Old credentials are implicitly revoked.
 
-![Attest & Proxy Model](05-attest-and-proxy.svg)
+![Attest & Proxy Model](05-attest-and-proxy.png)

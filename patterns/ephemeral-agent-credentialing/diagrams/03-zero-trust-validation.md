@@ -15,4 +15,4 @@ The complete validation decision tree executed by resource servers on every requ
 
 **Color key:** Green = Access Granted, Red = Access Denied, Amber = Audit Log
 
-![Zero-Trust Validation](03-zero-trust-validation.svg)
+![Zero-Trust Validation](03-zero-trust-validation.png)

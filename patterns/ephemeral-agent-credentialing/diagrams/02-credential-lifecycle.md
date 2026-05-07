@@ -13,4 +13,4 @@ End-to-end lifecycle of an agent's credentials, from spawn to termination. Each 
 4. **Renew** — For long-running tasks, token is renewed with same or narrower scope
 5. **Expire / Revoke** — Agent signals task completion, credentials are destroyed
 
-![Credential Lifecycle](02-credential-lifecycle.svg)
+![Credential Lifecycle](02-credential-lifecycle.png)

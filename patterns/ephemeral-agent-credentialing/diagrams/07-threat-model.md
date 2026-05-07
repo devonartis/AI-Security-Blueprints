@@ -13,4 +13,4 @@ Visual mapping of the pattern's security coverage. The left side shows threats t
 - **Amber** — Explicit non-goals (out of scope)
 - **Blue** — Complementary controls needed alongside this pattern
 
-![Threat Model](07-threat-model.svg)
+![Threat Model](07-threat-model.png)

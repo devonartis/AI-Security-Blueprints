@@ -16,4 +16,4 @@ Demonstrates how scope attenuation works across a multi-agent delegation chain, 
 
 **Key principle:** Permissions can only narrow at each hop, never expand.
 
-![Delegation Chain](04-delegation-chain.svg)
+![Delegation Chain](04-delegation-chain.png)
