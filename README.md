@@ -29,7 +29,7 @@ This repository includes:
 
 | Pattern | Category | Version | Last Updated | Description |
 |---------|----------|---------|--------------|-------------|
-| [Ephemeral Agent Credentialing](./patterns/ephemeral-agent-credentialing/) | IAM for AI Systems | v1.3 | 2026-02-01 | Secure authentication and authorization for short-lived AI agents using unique identities, task-scoped credentials, delegation chain verification, and operational observability |
+| [Ephemeral Agent Credentialing](./patterns/ephemeral-agent-credentialing/) | IAM for AI Systems | v1.4 | 2026-04-23 | Secure authentication and authorization for short-lived AI agents using unique identities, task-scoped credentials, delegation chain verification, and operational observability. Technical Edition + Executive Edition. |
 
 ### Secure Topologies
 
@@ -112,7 +112,9 @@ AI-Security-Blueprints/
 │           ├── v1.0.md           # Initial release
 │           ├── v1.1.md           # Threat model, bootstrap problem
 │           ├── v1.2.md           # Delegation chains, CIMD, LangGrinch
-│           └── v1.3.md           # Latest version
+│           ├── v1.3.md           # Previous version (retired)
+│           ├── v1.4-technical.md # Latest — Technical Edition
+│           └── v1.4.md           # Latest — Executive Edition
 ├── .github/
 │   └── ISSUE_TEMPLATE/           # Issue templates
 ├── CONTRIBUTING.md               # Contribution guidelines
